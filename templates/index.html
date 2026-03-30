@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Result Analyzer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <!-- Flash Messages -->
+    <div class="flash-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="flash {{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <!-- Header -->
+    <div class="header">
+        <div class="logo">
+            <div class="logo-icon">📊</div>
+            <span>Result Analyzer</span>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Hero -->
+        <div class="hero">
+            <h1>Student Result <span class="hero-highlight">Analyzer</span></h1>
+            <p>Upload PDF mark sheets, get instant analysis with sorting, searching,<br>and intelligent duplicate detection. Built for engineering colleges.</p>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-grid">
+            <div class="stat-card total">
+                <div class="stat-label">Total Students</div>
+                <div class="stat-value">{{ stats.total }}</div>
+            </div>
+            <div class="stat-card pass">
+                <div class="stat-label">Passed</div>
+                <div class="stat-value">{{ stats.pass }}</div>
+            </div>
+            <div class="stat-card atkt">
+                <div class="stat-label">ATKT</div>
+                <div class="stat-value">{{ stats.atkt }}</div>
+            </div>
+            <div class="stat-card fail">
+                <div class="stat-label">Failed</div>
+                <div class="stat-value">{{ stats.fail }}</div>
+            </div>
+            <div class="stat-card backlogs">
+                <div class="stat-label">With Backlogs</div>
+                <div class="stat-value">{{ stats.with_backlogs }}</div>
+            </div>
+        </div>
+
+        <!-- Upload -->
+        <div class="upload-card">
+            <h2>Upload Results PDF</h2>
+            <form action="{{ url_for('upload') }}" method="POST" enctype="multipart/form-data" id="uploadForm">
+                <div class="file-input-wrapper">
+                    <label class="file-input-label" for="pdfFile">
+                        <span>📁 Click to choose PDF file or drag and drop</span>
+                    </label>
+                    <input type="file" id="pdfFile" name="pdf" accept=".pdf" required>
+                    <div class="file-name" id="fileName"></div>
+                </div>
+
+                <div class="btn-group">
+                    <button type="submit" class="btn btn-primary">Upload & Analyze →</button>
+                    <button type="button" class="btn btn-secondary" onclick="resetForm()">Reset</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Controls -->
+        {% if students %}
+        <div class="controls-card">
+            <div class="controls-grid">
+                <form action="{{ url_for('search') }}" method="POST" class="control-group">
+                    <input type="text" name="query" placeholder="Search by name, PRN, seat no..." 
+                           value="{{ search_query or '' }}" class="search-input">
+                    <button type="submit" class="btn-control btn-search">Search</button>
+                </form>
+
+                <form action="{{ url_for('sort_students') }}" method="POST" class="control-group">
+                    <select name="sort_by">
+                        <option value="name">Name</option>
+                        <option value="sgpa">SGPA</option>
+                        <option value="backlogs">Backlogs</option>
+                        <option value="credits">Credits</option>
+                    </select>
+                    <select name="order">
+                        <option value="asc">↑ Ascending</option>
+                        <option value="desc">↓ Descending</option>
+                    </select>
+                    <button type="submit" class="btn-control btn-sort">Sort</button>
+                </form>
+
+                <form action="{{ url_for('clear') }}" method="POST">
+                    <button type="submit" class="btn-control btn-clear" 
+                            onclick="return confirm('Clear all data?')">
+                        Clear All
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Table -->
+        <div class="table-card">
+            {% if students %}
+            <div class="table-header">
+                <h2>Student Results</h2>
+                <span class="student-count">{{ students|length }} Student(s)</span>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Seat No</th>
+                        <th>PRN</th>
+                        <th>Name</th>
+                        <th>Sem 3 SGPA</th>
+                        <th>Sem 4 SGPA</th>
+                        <th>Credits</th>
+                        <th>Backlogs</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for student in students %}
+                    <tr>
+                        <td><strong>{{ student.seat_no }}</strong></td>
+                        <td>{{ student.prn }}</td>
+                        <td><strong>{{ student.student_name }}</strong></td>
+                        <td>
+                            {% if student.sgpa3 not in ['N/A', '-----'] %}
+                                <span class="badge badge-sgpa">{{ student.sgpa3 }}</span>
+                            {% else %}
+                                <span style="color: #9ca3af;">{{ student.sgpa3 }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if student.sgpa4 not in ['N/A', '-----'] %}
+                                <span class="badge badge-sgpa">{{ student.sgpa4 }}</span>
+                            {% else %}
+                                <span style="color: #9ca3af;">{{ student.sgpa4 }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ student.credits }}</td>
+                        <td>
+                            {% if student.backlogs > 0 %}
+                                <span class="badge badge-backlog">{{ student.backlogs }}</span>
+                            {% else %}
+                                <span class="badge badge-backlog-zero">0</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="status-badge status-{{ student.status|lower }}">
+                                {{ student.status }}
+                            </span>
+                        </td>
+                        <td>
+                            <form action="{{ url_for('delete_student', prn=student.prn) }}" method="POST" style="display: inline;">
+                                <button type="submit" class="btn-delete" 
+                                        onclick="return confirm('Delete this student?')">
+                                    Delete
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="no-data">
+                <div class="no-data-icon">📂</div>
+                <h3>No Results Yet</h3>
+                <p>Upload a PDF file to start analyzing student results</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
