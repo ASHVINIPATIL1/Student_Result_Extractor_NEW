@@ -1,9 +1,6 @@
 # 📊 Student Result Analyzer
 > Upload a class result PDF — instantly extract, search, sort, and analyze every student's performance.
 
-![Dashboard](assets/Dashboard.png)
-![Student Table](assets/student_table.png)
-
 ---
 
 ## 🚀 About the Project
